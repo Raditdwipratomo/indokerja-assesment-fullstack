@@ -1,0 +1,88 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  JOB_SEEKER
+  COMPANY
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  ACCEPTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  jobs         Job[]
+  applications Application[]
+
+  @@map("users")
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  title       String
+  description String?
+  location    String
+  salary      Int
+  jobType     JobType  @map("job_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company      User          @relation(fields: [companyId], references: [id])
+  applications Application[]
+
+  @@map("jobs")
+}
+
+model Application {
+  id          String            @id @default(uuid())
+  jobId       String            @map("job_id")
+  jobSeekerId String            @map("job_seeker_id")
+  status      ApplicationStatus @default(APPLIED)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  job       Job                  @relation(fields: [jobId], references: [id])
+  jobSeeker User                 @relation(fields: [jobSeekerId], references: [id])
+  history   ApplicationHistory[]
+
+  @@unique([jobId, jobSeekerId])
+  @@map("applications")
+}
+
+model ApplicationHistory {
+  id            String            @id @default(uuid())
+  applicationId String            @map("application_id")
+  status        ApplicationStatus
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("application_histories")
+}
